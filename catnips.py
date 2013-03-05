@@ -57,6 +57,12 @@ def get_options() :
             print >> sys.stderr, "Error: unhandled option '%s'" % o
             sys.exit(-1)
 
+def rm(filename) :
+    try :
+        os.remove(filename)
+    except :
+        pass
+
 def get_pdfs() :
     global options
     website = 'http://books.nips.cc/'
@@ -109,29 +115,37 @@ def get_pdfs() :
     count = 0
     total = len(pdfs)
     header = "\rdownloading NIPS papers:"
+
+    errfile = open('errors.txt', 'w')
+    errcount = 0
+    
     print >> sys.stderr, "%s %d / %d" % (header, count, total),
     for pdf in pdfs :
         pdf_name = os.path.basename(pdf)
+        pdf_dest = os.path.join(directory, pdf_name)
         
         try :
-            f = open(os.path.join(directory, pdf_name), 'w')
+            f = open(pdf_dest, 'w')
             f.write(urllib2.urlopen(pdf).read())
             f.close()
         
         except urllib2.HTTPError, he :
-            print >> sys.stderr, "\n%s" % str(he)
-            sys.exit(-1)
+            rm(pdf_dest)
+            print >> errfile, "HTTPError %d %s" % (he.getcode(), pdf)
+            errcount += 1
 
         except urllib2.URLError, ue :
-            print >> sys.stderr, "\n%s" % str(ue)
-            sys.exit(-1)
+            rm(pdf_dest)
+            print >> errfile, "URLError %s" % (pdf)
+            errcount += 1
 
         count += 1
         print >> sys.stderr, "%s %d / %d" % (header, count, total),
 
         time.sleep(options['delay'])
 
-    print >> sys.stderr, "%s complete!" % header
+    print >> sys.stderr, "%s complete! (%d errors, see errors.txt)" % (header, errcount)
+    errfile.close()
 
 def build_dataset() :
     pass
